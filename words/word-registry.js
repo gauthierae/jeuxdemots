@@ -4,9 +4,13 @@
 // ===================================
 
 import contraction from './contraction.js';
+import flexible from './flexible.js';
+import elastique from './elastique.js';
 // FUTURE: import autreMot from './autre-mot.js';
 
 export default [
   contraction,
+  flexible,
+  elastique,
   // FUTURE: ajouter d'autres mots ici
 ];
