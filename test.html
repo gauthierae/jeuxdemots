@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Page de test - Jeux de mots">
+    <title>Test - Zen ou l'art des jeux de mots</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Styles spécifiques à la page de test */
+        body {
+            padding: 2rem;
+        }
+        
+        #test-container {
+            min-height: 400px;
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            padding: 2rem;
+            border: 2px solid #4a9eff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        
+        #test-controls {
+            background-color: #2a2a2a;
+            padding: 1.5rem;
+            border-radius: 8px;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        #test-controls label {
+            color: #e0e0e0;
+            font-weight: bold;
+        }
+        
+        #word-selector {
+            padding: 0.5rem;
+            font-size: 1rem;
+            border-radius: 4px;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            border: 1px solid #4a9eff;
+        }
+        
+        #test-info {
+            background-color: #2a2a2a;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            color: #888;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .test-button {
+            background-color: #4a9eff;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .test-button:hover {
+            background-color: #3a8eef;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="color: #e0e0e0; text-align: center;">Test des Jeux de Mots</h1>
+    
+    <div id="test-container">
+        <p style="color: #888;">Sélectionnez un mot et cliquez sur "Charger"</p>
+    </div>
+    
+    <div id="test-controls">
+        <label for="word-selector">Mot à tester :</label>
+        <select id="word-selector">
+            <option value="">-- Sélectionner --</option>
+        </select>
+        <button id="load-word" class="test-button">Charger</button>
+        <button id="reload" class="test-button">Recharger la page</button>
+    </div>
+    
+    <div id="test-info">
+        Console ouverte recommandée (F12) pour voir les logs
+    </div>
+
+    <script type="module" src="test/test-script.js"></script>
+</body>
+</html>

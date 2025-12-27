@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Projet web de base">
+    <title>Zen ou l'art des jeux de mots</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Zen ou l'art des jeux de mots</h1>
+        <nav>
+            <ul>
+                <li><a href="#bienvenue">Bienvenue</a></li>
+                <li><a href="#apropos">À propos</a></li>
+                <li><a href="#jeux">Jeux de mots</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <!-- VUE LOBBY -->
+        <div id="lobby-view" class="view">
+            <section id="bienvenue">
+                <h2>Bienvenue</h2>
+                <!-- Vide pour l'instant -->
+            </section>
+
+            <section id="apropos">
+                <h2>À propos</h2>
+                <!-- Vide pour l'instant -->
+            </section>
+
+            <button id="enterBtn" class="game-button">Jouer aux jeux de mots</button>
+        </div>
+
+        <!-- VUE PLAYING -->
+        <div id="playing-view" class="view hidden" style="display: none;">
+            <section id="jeux">
+                <h2>Jeux de mots</h2>
+                <div id="game-container">
+                    <h1 class="word-game">
+                        <span class="con">CON</span><span class="traction">TRACTION</span>
+                    </h1>
+                </div>
+                <button id="nextWordBtn" class="game-button" style="margin-top: 2rem;">Suivant</button>
+            </section>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <!-- Vide pour l'instant -->
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
