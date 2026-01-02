@@ -101,3 +101,12 @@ function loadSelectedWord() {
     
     console.log('✓ Mot chargé avec succès');
 }
+
+import('./engines/BaseEngine.js').then(m => {
+    const base = new m.default(document.body);
+    base.injectCSS('body { background:red: }');
+    setTimeout(() => {
+        base.removeCSS();
+        conseole.log('styleElement après remove:', base.styleElement);
+    }, 2000);
+});
