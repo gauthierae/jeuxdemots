@@ -220,6 +220,353 @@ window.functionName = functionName;
 
 ---
 
+## Problèmes JavaScript dans les Mots
+
+### ❌ Animations Continuent Après Changement de Mot
+
+**Symptôme :**
+- Tu changes de mot (Suivant → nouveau mot)
+- Les animations du mot précédent continuent en arrière-plan
+- Parfois visible (lettres qui bougent), parfois juste dans les logs
+
+**Diagnostic :**
+```javascript
+// Dans la console
+// Si des requestAnimationFrame continuent, tu verras des appels répétés
+```
+
+**Cause :**
+`cleanup()` ne stoppe pas `requestAnimationFrame()`.
+
+**Solution :**
+
+```javascript
+// ❌ PROBLÈME
+init: function(container) {
+  const animate = () => {
+    // Animation
+    requestAnimationFrame(animate);
+  };
+  animate();
+}
+// Pas de cleanup
+
+// ✅ SOLUTION
+init: function(container) {
+  const animate = () => {
+    // Animation
+    this.animationFrameId = requestAnimationFrame(animate);
+  };
+  animate();
+},
+
+cleanup: function() {
+  if (this.animationFrameId) {
+    cancelAnimationFrame(this.animationFrameId);
+    this.animationFrameId = null;
+  }
+}
+```
+
+---
+
+### ❌ Mémoire Augmente Après Chaque Mot
+
+**Symptôme :**
+- Page devient lente après avoir vu 5-10 mots
+- Performance Monitor montre "JS Heap Size" qui monte constamment
+
+**Diagnostic :**
+```
+F12 → Menu (3 points) → More Tools → Performance Monitor
+Observer "JS Heap Size" pendant que tu navigues entre mots
+Si monte et ne redescend jamais → fuite mémoire
+```
+
+**Cause :**
+Event listeners pas retirés → s'accumulent en mémoire.
+
+**Solution :**
+
+```javascript
+// ❌ PROBLÈME
+init: function(container) {
+  container.addEventListener('click', () => {
+    // Handler anonyme impossible à retirer
+  });
+}
+
+// ✅ SOLUTION
+init: function(container) {
+  this.handleClick = () => {
+    // Handler nommé
+  };
+  container.addEventListener('click', this.handleClick);
+},
+
+cleanup: function() {
+  if (this.handleClick) {
+    container.removeEventListener('click', this.handleClick);
+    this.handleClick = null;
+  }
+}
+```
+
+---
+
+### ❌ Event Listeners Multipliés
+
+**Symptôme :**
+- Cliquer sur une lettre déclenche l'action 2, 3, 5 fois
+- Chaque rechargement du mot empire le problème
+
+**Diagnostic :**
+```javascript
+// Dans cleanup(), ajouter :
+console.log('Listeners retirés');
+
+// Si ce log n'apparaît jamais → cleanup pas appelé ou incomplet
+```
+
+**Cause :**
+Listeners ajoutés mais jamais retirés → s'accumulent.
+
+**Solution :**
+
+Toujours stocker les références et les retirer :
+
+```javascript
+init: function(container) {
+  this.letters = container.querySelectorAll('.letter');
+  this.handleMouseEnter = (e) => { /* ... */ };
+  
+  this.letters.forEach(letter => {
+    letter.addEventListener('mouseenter', this.handleMouseEnter);
+  });
+},
+
+cleanup: function() {
+  if (this.letters && this.handleMouseEnter) {
+    this.letters.forEach(letter => {
+      letter.removeEventListener('mouseenter', this.handleMouseEnter);
+    });
+    this.letters = null;
+    this.handleMouseEnter = null;
+  }
+}
+```
+
+---
+
+### ❌ Timers Qui Ne S'Arrêtent Pas
+
+**Symptôme :**
+- Code continue à s'exécuter après avoir quitté le mot
+- Console logs apparaissent pour un mot qui n'est plus affiché
+
+**Diagnostic :**
+```javascript
+// Chercher dans le code :
+setTimeout(...
+setInterval(...
+
+// Sans clearTimeout/clearInterval correspondant
+```
+
+**Cause :**
+Timers créés mais jamais arrêtés.
+
+**Solution :**
+
+```javascript
+// ❌ PROBLÈME
+init: function(container) {
+  setInterval(() => {
+    console.log('Tick');  // Continue indéfiniment
+  }, 1000);
+}
+
+// ✅ SOLUTION
+init: function(container) {
+  this.intervalId = setInterval(() => {
+    console.log('Tick');
+  }, 1000);
+},
+
+cleanup: function() {
+  if (this.intervalId) {
+    clearInterval(this.intervalId);
+    this.intervalId = null;
+  }
+}
+```
+
+---
+
+### ❌ Transitions Ne Se Terminent Pas
+
+**Symptôme :**
+- Cliquer "Suivant" → rien ne se passe
+- Le mot reste figé
+- Bouton "Suivant" reste désactivé
+
+**Diagnostic :**
+```javascript
+// Dans enterTransition ou exitTransition
+// Vérifier que callback() est appelé
+```
+
+**Cause :**
+`callback()` jamais appelé dans la transition custom.
+
+**Solution :**
+
+```javascript
+// ❌ PROBLÈME
+enterTransition: {
+  duration: 1500,
+  effect: function(container, callback) {
+    // Animation
+    // ...
+    // Oubli d'appeler callback() → bloque la navigation
+  }
+}
+
+// ✅ SOLUTION
+enterTransition: {
+  duration: 1500,
+  effect: function(container, callback) {
+    // Animation
+    // ...
+    
+    setTimeout(() => {
+      callback();  // ✅ TOUJOURS appeler
+    }, 1500);
+  }
+}
+```
+
+---
+
+### ❌ Erreur : "Cannot read property X of null"
+
+**Erreur complète :**
+```
+Uncaught TypeError: Cannot read properties of null (reading 'addEventListener')
+```
+
+**Cause :**
+Référence à un élément qui n'existe plus ou pas encore.
+
+**Solution :**
+
+```javascript
+// ❌ PROBLÈME
+init: function(container) {
+  const btn = container.querySelector('.my-button');
+  btn.addEventListener('click', ...);  // btn peut être null
+}
+
+// ✅ SOLUTION
+init: function(container) {
+  const btn = container.querySelector('.my-button');
+  
+  if (btn) {  // ✅ Vérifier d'abord
+    this.handleClick = () => { /* ... */ };
+    btn.addEventListener('click', this.handleClick);
+  }
+}
+```
+
+---
+
+### ❌ Styles Inline Persistent
+
+**Symptôme :**
+- Les styles ajoutés en JS (style.transform, style.opacity) persistent
+- Le mot suivant hérite des styles du précédent
+
+**Diagnostic :**
+```javascript
+// Inspecter le container avec F12
+// Chercher style="..." directement sur les éléments
+```
+
+**Cause :**
+Styles inline ajoutés mais pas reset dans cleanup().
+
+**Solution :**
+
+```javascript
+// ❌ PROBLÈME
+init: function(container) {
+  const letters = container.querySelectorAll('.letter');
+  letters.forEach(letter => {
+    letter.style.transform = 'rotate(45deg)';  // Reste après cleanup
+  });
+}
+
+// ✅ SOLUTION
+cleanup: function() {
+  if (this.letters) {
+    this.letters.forEach(letter => {
+      // Reset tous les styles inline
+      letter.style.transform = '';
+      letter.style.opacity = '';
+      letter.style.position = '';
+      // OU
+      letter.removeAttribute('style');
+    });
+  }
+}
+```
+
+---
+
+### Debugging Méthodique
+
+**Quand un mot avec JS bug :**
+
+1. **Isoler dans test.html**
+   - Charger le mot seul
+   - Reproduire le bug
+
+2. **Console ouverte (F12)**
+   - Chercher les erreurs JavaScript
+   - Vérifier que init() est appelé
+   - Vérifier que cleanup() est appelé
+
+3. **Ajouter des logs**
+   ```javascript
+   init: function(container) {
+     console.log('>>> INIT début');
+     // Code
+     console.log('>>> INIT fin');
+   }
+   
+   cleanup: function() {
+     console.log('>>> CLEANUP début');
+     // Code
+     console.log('>>> CLEANUP fin');
+   }
+   ```
+
+4. **Tester 10 fois**
+   - Charger → Nettoyer (x10)
+   - Vérifier stabilité
+
+5. **Performance Monitor**
+   - Ouvrir Performance Monitor
+   - Observer la mémoire
+   - Si monte → chercher la fuite
+
+6. **Simplifier**
+   - Commenter tout le code dans init()
+   - Rajouter ligne par ligne
+   - Identifier la ligne problématique
+
+---
+
 ## Problèmes Git
 
 ### ❌ Git Push Demande Username/Password à Chaque Fois
