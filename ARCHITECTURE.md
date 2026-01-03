@@ -383,6 +383,512 @@ Futur : transitions custom définies ici
 
 ---
 
+## JavaScript dans les Modules de Mots
+
+### Vue d'Ensemble
+
+**Les mots ne sont pas que du HTML/CSS statique.** Ce sont des **mini-applications JavaScript** avec :
+- Animations continues (requestAnimationFrame)
+- Event listeners multiples
+- Transitions custom complexes
+- État interne (positions, angles, compteurs)
+
+### 3 Zones d'Utilisation du JavaScript
+
+#### 1. Interactivité Pendant l'Affichage (init/cleanup)
+
+**Utilisé pour :**
+- Animations continues (orbites, particules, vagues)
+- Event listeners personnalisés (au-delà du CSS hover)
+- État interne au mot
+
+**Exemple : GRAVITATION avec Lettres en Orbite**
+
+```javascript
+export default {
+  id: 'gravitation',
+  html: `
+    <h1 class="word-game gravitation">
+      <span class="letter g">G</span>
+      <span class="letter r">R</span>
+      <span class="letter a">A</span>
+      <span class="letter v">V</span>
+      <span class="letter i">I</span>
+      <span class="letter t">T</span>
+      <span class="letter a2">A</span>
+      <span class="letter t2">T</span>
+      <span class="letter i2">I</span>
+      <span class="letter o">O</span>
+      <span class="letter n">N</span>
+    </h1>
+  `,
+  
+  css: `
+    h1.word-game.gravitation {
+      position: relative;
+      font-size: 3rem;
+      width: 500px;
+      height: 500px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    h1.word-game.gravitation .letter {
+      position: absolute;
+      display: inline-block;
+      font-family: Georgia, serif;
+      color: #e0e0e0;
+      transition: color 0.3s;
+    }
+    
+    h1.word-game.gravitation:hover .letter {
+      color: #4a9eff;
+    }
+  `,
+  
+  enterTransition: null,
+  exitTransition: null,
+  
+  // ✅ Animation continue avec requestAnimationFrame
+  init: function(container) {
+    console.log('>>> Mot GRAVITATION initialisé');
+    
+    const letters = container.querySelectorAll('.letter');
+    let angle = 0;
+    
+    // Animation des orbites
+    const animate = () => {
+      letters.forEach((letter, i) => {
+        // Chaque lettre sur une orbite différente
+        const radius = 80 + (i * 15);
+        const speed = 0.02 + (i * 0.003);
+        const currentAngle = angle * speed + (i * 0.5);
+        
+        const x = Math.cos(currentAngle) * radius;
+        const y = Math.sin(currentAngle) * radius;
+        
+        letter.style.transform = `translate(${x}px, ${y}px) rotate(${currentAngle}rad)`;
+      });
+      
+      angle += 0.02;
+      
+      // Stocker la référence pour le cleanup
+      this.animationFrameId = requestAnimationFrame(animate);
+    };
+    
+    animate();
+  },
+  
+  // ⚠️ CRITIQUE : Arrêter l'animation
+  cleanup: function() {
+    console.log('>>> Mot GRAVITATION nettoyé');
+    
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+  }
+};
+```
+
+**Points clés :**
+- `requestAnimationFrame()` pour animation fluide
+- Stocker `animationFrameId` dans `this` pour y accéder dans cleanup
+- `cancelAnimationFrame()` dans cleanup **obligatoire**
+- Sans cleanup → animation continue en arrière-plan → fuite mémoire
+
+---
+
+#### 2. Event Listeners Personnalisés
+
+**Utilisé pour :**
+- Interactions au-delà du CSS (click, drag, etc.)
+- Logique complexe sur hover
+- Séquences d'animations
+
+**Exemple : COMBUSTION avec Clic pour Enflammer**
+
+```javascript
+export default {
+  id: 'combustion',
+  html: `
+    <h1 class="word-game combustion">
+      <span class="letter c">C</span>
+      <span class="letter o">O</span>
+      <!-- ... autres lettres ... -->
+    </h1>
+  `,
+  
+  css: `
+    h1.word-game.combustion .letter {
+      display: inline-block;
+      transition: all 0.3s ease-out;
+      cursor: pointer;
+    }
+    
+    h1.word-game.combustion .letter.burning {
+      color: #ff4500;
+      transform: scale(1.3) rotate(10deg);
+      text-shadow: 0 0 20px #ff6347;
+    }
+  `,
+  
+  enterTransition: null,
+  exitTransition: null,
+  
+  init: function(container) {
+    console.log('>>> Mot COMBUSTION initialisé');
+    
+    this.letters = container.querySelectorAll('.letter');
+    
+    // Handler stocké pour pouvoir le retirer
+    this.handleClick = (e) => {
+      const letter = e.target;
+      letter.classList.add('burning');
+      
+      // Propager le feu aux lettres adjacentes
+      setTimeout(() => {
+        const index = Array.from(this.letters).indexOf(letter);
+        if (this.letters[index + 1]) {
+          this.letters[index + 1].classList.add('burning');
+        }
+      }, 200);
+    };
+    
+    // Ajouter listener à chaque lettre
+    this.letters.forEach(letter => {
+      letter.addEventListener('click', this.handleClick);
+    });
+  },
+  
+  cleanup: function() {
+    console.log('>>> Mot COMBUSTION nettoyé');
+    
+    // ⚠️ CRITIQUE : Retirer tous les listeners
+    if (this.letters && this.handleClick) {
+      this.letters.forEach(letter => {
+        letter.removeEventListener('click', this.handleClick);
+      });
+    }
+    
+    // Reset des classes
+    if (this.letters) {
+      this.letters.forEach(letter => {
+        letter.classList.remove('burning');
+      });
+    }
+  }
+};
+```
+
+**Points clés :**
+- Stocker les références dans `this` (letters, handlers)
+- Handler nommé (pas de fonction anonyme) pour pouvoir le retirer
+- `removeEventListener()` dans cleanup **obligatoire**
+- Reset des classes/état dans cleanup
+
+---
+
+#### 3. Transitions Custom (enterTransition/exitTransition)
+
+**Utilisé pour :**
+- Animations d'entrée complexes (impossible en CSS)
+- Animations de sortie avec logique
+- Séquences temporelles précises
+
+**Exemple : EXPLOSION avec Lettres qui Éclatent**
+
+```javascript
+export default {
+  id: 'explosion',
+  html: `
+    <h1 class="word-game explosion">
+      <span class="letter">E</span>
+      <span class="letter">X</span>
+      <span class="letter">P</span>
+      <span class="letter">L</span>
+      <span class="letter">O</span>
+      <span class="letter">S</span>
+      <span class="letter">I</span>
+      <span class="letter">O</span>
+      <span class="letter">N</span>
+    </h1>
+  `,
+  
+  css: `
+    h1.word-game.explosion .letter {
+      display: inline-block;
+      font-family: Georgia, serif;
+      font-size: 5rem;
+      color: #e0e0e0;
+    }
+  `,
+  
+  // ✅ Transition d'entrée custom
+  enterTransition: {
+    duration: 1500,
+    effect: function(container, callback) {
+      const letters = container.querySelectorAll('.letter');
+      
+      // État initial : toutes les lettres au centre, invisibles
+      letters.forEach(letter => {
+        letter.style.position = 'absolute';
+        letter.style.left = '50%';
+        letter.style.top = '50%';
+        letter.style.opacity = '0';
+        letter.style.transform = 'translate(-50%, -50%) scale(0)';
+      });
+      
+      // Animation : explosion depuis le centre
+      letters.forEach((letter, i) => {
+        setTimeout(() => {
+          const angle = (i / letters.length) * Math.PI * 2;
+          const distance = 50 + Math.random() * 30;
+          const x = Math.cos(angle) * distance;
+          const y = Math.sin(angle) * distance;
+          
+          letter.style.transition = 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+          letter.style.opacity = '1';
+          letter.style.transform = `
+            translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) 
+            scale(1) 
+            rotate(${Math.random() * 360}deg)
+          `;
+        }, i * 80); // Stagger
+      });
+      
+      // Callback après la durée totale
+      setTimeout(callback, 1500);
+    }
+  },
+  
+  // ✅ Transition de sortie custom
+  exitTransition: {
+    duration: 1000,
+    effect: function(container, callback) {
+      const letters = container.querySelectorAll('.letter');
+      
+      // Animation : lettres s'envolent vers le haut
+      letters.forEach((letter, i) => {
+        setTimeout(() => {
+          letter.style.transition = 'all 0.6s ease-in';
+          letter.style.opacity = '0';
+          letter.style.transform = `
+            translateY(-300px) 
+            rotate(${Math.random() * 720}deg) 
+            scale(0.3)
+          `;
+        }, i * 50);
+      });
+      
+      setTimeout(callback, 1000);
+    }
+  },
+  
+  init: function(container) {
+    console.log('>>> Mot EXPLOSION initialisé');
+  },
+  
+  cleanup: function() {
+    console.log('>>> Mot EXPLOSION nettoyé');
+  }
+};
+```
+
+**Points clés :**
+- `enterTransition.effect(container, callback)` : function qui anime l'entrée
+- `exitTransition.effect(container, callback)` : function qui anime la sortie
+- **TOUJOURS appeler `callback()`** à la fin pour signaler que c'est terminé
+- `duration` : temps total en ms (pour que l'orchestrateur sache quand continuer)
+
+---
+
+### Règles Critiques pour le JavaScript
+
+#### 1. Cleanup Obligatoire
+
+**Sans cleanup :**
+```javascript
+init: function(container) {
+  const animate = () => {
+    // Animation
+    requestAnimationFrame(animate);  // ❌ Continue indéfiniment
+  };
+  animate();
+}
+// Pas de cleanup() → fuite mémoire
+```
+
+**Avec cleanup :**
+```javascript
+init: function(container) {
+  const animate = () => {
+    // Animation
+    this.animationFrameId = requestAnimationFrame(animate);
+  };
+  animate();
+},
+
+cleanup: function() {
+  if (this.animationFrameId) {
+    cancelAnimationFrame(this.animationFrameId);  // ✅ Arrêté proprement
+  }
+}
+```
+
+---
+
+#### 2. Stocker les Références dans `this`
+
+**Pourquoi :** Pour pouvoir les utiliser dans `cleanup()`.
+
+```javascript
+init: function(container) {
+  // ✅ Stocker dans this
+  this.letters = container.querySelectorAll('.letter');
+  this.handleClick = () => { /* ... */ };
+  this.animationFrameId = null;
+  this.timerId = null;
+  
+  this.letters.forEach(letter => {
+    letter.addEventListener('click', this.handleClick);
+  });
+},
+
+cleanup: function() {
+  // ✅ Accessible depuis this
+  if (this.letters && this.handleClick) {
+    this.letters.forEach(letter => {
+      letter.removeEventListener('click', this.handleClick);
+    });
+  }
+  
+  if (this.animationFrameId) {
+    cancelAnimationFrame(this.animationFrameId);
+  }
+  
+  if (this.timerId) {
+    clearTimeout(this.timerId);
+  }
+}
+```
+
+---
+
+#### 3. Checklist Cleanup
+
+**Avant de terminer un mot avec JS, vérifier que `cleanup()` fait :**
+
+- [ ] `cancelAnimationFrame()` pour toutes les animations
+- [ ] `removeEventListener()` pour tous les event listeners
+- [ ] `clearTimeout()` et `clearInterval()` pour tous les timers
+- [ ] Reset de l'état interne (`this.propriété = null`)
+- [ ] Reset des classes CSS ajoutées dynamiquement
+
+---
+
+### Debugging JavaScript dans les Mots
+
+#### Test de Fuites Mémoire
+
+**Dans test.html :**
+1. Charger un mot avec animations
+2. Observer l'animation (orbites, particules, etc.)
+3. Cliquer "Nettoyer le mot"
+4. **Vérifier que TOUT s'arrête** (animations, effets, listeners)
+5. Recharger le mot
+6. Répéter 10 fois
+7. Ouvrir Performance Monitor (F12 → More Tools → Performance Monitor)
+8. Vérifier que la mémoire ne monte pas indéfiniment
+
+**Si la mémoire augmente :** Fuite détectée → revoir cleanup().
+
+---
+
+#### Console Logs Utiles
+
+```javascript
+init: function(container) {
+  console.log('>>> Mot [ID] initialisé');
+  console.log('  - Lettres:', this.letters.length);
+  console.log('  - Animation démarrée');
+},
+
+cleanup: function() {
+  console.log('>>> Mot [ID] nettoyé');
+  console.log('  - Animation arrêtée');
+  console.log('  - Listeners retirés');
+}
+```
+
+**Bénéfice :** Voir dans la console si init/cleanup sont appelés correctement.
+
+---
+
+### Librairies JavaScript Externes (Optionnel)
+
+**Pour des animations très complexes, utiliser des librairies :**
+
+#### GSAP (GreenSock)
+```html
+<!-- Dans index.html ou test.html -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+```
+
+```javascript
+enterTransition: {
+  duration: 1500,
+  effect: function(container, callback) {
+    const letters = container.querySelectorAll('.letter');
+    
+    gsap.from(letters, {
+      duration: 1.5,
+      scale: 0,
+      rotation: 360,
+      opacity: 0,
+      stagger: 0.1,
+      ease: 'elastic.out(1, 0.5)',
+      onComplete: callback
+    });
+  }
+}
+```
+
+#### Anime.js
+```javascript
+enterTransition: {
+  duration: 2000,
+  effect: function(container, callback) {
+    anime({
+      targets: '.letter',
+      translateX: anime.stagger(10, {grid: [14, 5], from: 'center', axis: 'x'}),
+      translateY: anime.stagger(10, {grid: [14, 5], from: 'center', axis: 'y'}),
+      rotateZ: anime.stagger([0, 90], {grid: [14, 5], from: 'center', axis: 'x'}),
+      delay: anime.stagger(200, {grid: [14, 5], from: 'center'}),
+      easing: 'easeInOutQuad',
+      complete: callback
+    });
+  }
+}
+```
+
+**Note :** Librairies = plus de poids → évaluer le trade-off.
+
+---
+
+### Exemples de Mots Complexes (Futurs)
+
+**GRAVITATION :** Lettres en orbite autour du centre  
+**COMBUSTION :** Lettres qui s'enflamment au clic  
+**EXPLOSION :** Lettres éclatent depuis le centre  
+**OSCILLATION :** Lettres qui balancent comme des pendules  
+**EXPANSION :** Lettres qui s'éloignent progressivement  
+
+**Tous nécessiteront JavaScript dans init/cleanup et/ou transitions.**
+
+---
+
 ## Comment Étendre
 
 ### Ajouter un Nouveau Mot

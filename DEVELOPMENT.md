@@ -220,7 +220,15 @@ export default [
 - [ ] Copier HTML dans `html: ...`
 - [ ] Copier CSS dans `css: ...`
 - [ ] Ajouter sélecteurs spécifiques (h1.word-game.nom-du-mot)
-- [ ] Implémenter init() et cleanup() si nécessaire
+- [ ] **Si animations JS :** Implémenter dans init()
+- [ ] **Si event listeners :** Stocker handlers dans `this`
+- [ ] **Si transitions custom :** Implémenter enterTransition/exitTransition
+- [ ] **TOUJOURS :** Implémenter cleanup() propre
+  - [ ] cancelAnimationFrame() pour toutes les animations
+  - [ ] removeEventListener() pour tous les listeners
+  - [ ] clearTimeout/clearInterval pour tous les timers
+  - [ ] Reset de l'état interne (this.propriété = null)
+  - [ ] Reset des classes CSS ajoutées dynamiquement
 
 #### 4. Enregistrement
 - [ ] Importer dans `word-registry.js`
@@ -298,6 +306,211 @@ export default {
   cleanup: function() {}
 };
 ```
+
+---
+
+## Debugging JavaScript dans les Mots
+
+### Tester le Cleanup Propre
+
+**Objectif :** S'assurer qu'aucune animation/listener ne continue après cleanup().
+
+**Procédure dans test.html :**
+
+1. **Charger un mot avec JS**
+   ```
+   Dropdown → Sélectionner "GRAVITATION" (par exemple)
+   Cliquer "Charger le mot"
+   ```
+
+2. **Observer les animations**
+   - Lettres tournent en orbite
+   - Effets visuels fonctionnent
+   - Event listeners répondent
+
+3. **Nettoyer le mot**
+   ```
+   Cliquer "Nettoyer le mot"
+   ```
+
+4. **Vérifier que TOUT s'arrête**
+   - [ ] Animations stoppées (lettres ne bougent plus)
+   - [ ] Event listeners inactifs (hover/click ne font rien)
+   - [ ] Console affiche ">>> Mot [ID] nettoyé"
+   - [ ] Aucune erreur dans la console
+
+5. **Recharger et répéter 10 fois**
+   ```
+   Charger → Observer → Nettoyer
+   (x10)
+   ```
+
+6. **Vérifier la mémoire**
+   - F12 → Menu (3 points) → More Tools → Performance Monitor
+   - Observer "JS Heap Size"
+   - Si monte continuellement → fuite mémoire détectée
+
+---
+
+### Fuites Mémoire Courantes
+
+#### ❌ Oublier cancelAnimationFrame()
+
+**Symptôme :** Animations continuent en arrière-plan après changement de mot.
+
+**Problème :**
+```javascript
+init: function(container) {
+  const animate = () => {
+    // Animation
+    requestAnimationFrame(animate);  // ❌ Continue indéfiniment
+  };
+  animate();
+}
+// Pas de cleanup()
+```
+
+**Solution :**
+```javascript
+init: function(container) {
+  const animate = () => {
+    // Animation
+    this.animationFrameId = requestAnimationFrame(animate);
+  };
+  animate();
+},
+
+cleanup: function() {
+  if (this.animationFrameId) {
+    cancelAnimationFrame(this.animationFrameId);  // ✅
+    this.animationFrameId = null;
+  }
+}
+```
+
+---
+
+#### ❌ Oublier removeEventListener()
+
+**Symptôme :** Event listeners s'accumulent, interactions deviennent bizarres.
+
+**Problème :**
+```javascript
+init: function(container) {
+  container.addEventListener('click', () => {
+    // Handler
+  });  // ❌ Fonction anonyme, impossible à retirer
+}
+```
+
+**Solution :**
+```javascript
+init: function(container) {
+  // Handler nommé stocké dans this
+  this.handleClick = () => {
+    // Handler
+  };
+  
+  container.addEventListener('click', this.handleClick);
+},
+
+cleanup: function() {
+  if (this.handleClick) {
+    container.removeEventListener('click', this.handleClick);  // ✅
+    this.handleClick = null;
+  }
+}
+```
+
+---
+
+#### ❌ Timers Oubliés
+
+**Symptôme :** Code continue à s'exécuter après cleanup.
+
+**Problème :**
+```javascript
+init: function(container) {
+  setInterval(() => {
+    // Code
+  }, 100);  // ❌ Continue indéfiniment
+}
+```
+
+**Solution :**
+```javascript
+init: function(container) {
+  this.intervalId = setInterval(() => {
+    // Code
+  }, 100);
+},
+
+cleanup: function() {
+  if (this.intervalId) {
+    clearInterval(this.intervalId);  // ✅
+    this.intervalId = null;
+  }
+}
+```
+
+---
+
+### Console Debugging
+
+**Ajouter des logs dans init() et cleanup() :**
+
+```javascript
+init: function(container) {
+  console.log('>>> Mot [ID] initialisé');
+  
+  // Setup
+  this.letters = container.querySelectorAll('.letter');
+  console.log('  - Lettres:', this.letters.length);
+  
+  const animate = () => {
+    // Animation
+    this.animationFrameId = requestAnimationFrame(animate);
+  };
+  animate();
+  console.log('  - Animation démarrée');
+},
+
+cleanup: function() {
+  console.log('>>> Mot [ID] nettoyé');
+  
+  if (this.animationFrameId) {
+    cancelAnimationFrame(this.animationFrameId);
+    console.log('  - Animation arrêtée');
+  }
+  
+  if (this.letters && this.handleClick) {
+    this.letters.forEach(letter => {
+      letter.removeEventListener('click', this.handleClick);
+    });
+    console.log('  - Listeners retirés');
+  }
+  
+  console.log('  - Cleanup terminé');
+}
+```
+
+**Bénéfice :** Voir dans la console chaque étape du lifecycle.
+
+---
+
+### Checklist Cleanup JavaScript
+
+Avant de considérer un mot "terminé", vérifier que cleanup() fait :
+
+- [ ] `cancelAnimationFrame()` pour toutes les animations
+- [ ] `removeEventListener()` pour tous les event listeners
+- [ ] `clearTimeout()` pour tous les timeouts
+- [ ] `clearInterval()` pour tous les intervals
+- [ ] Reset de l'état interne (`this.propriété = null`)
+- [ ] Reset des classes CSS ajoutées (`classList.remove()`)
+- [ ] Console logs confirment le cleanup
+- [ ] Test 10x charger/nettoyer sans erreur
+- [ ] Mémoire stable (pas de montée continue)
 
 ---
 
