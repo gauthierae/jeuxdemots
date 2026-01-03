@@ -3,25 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Projet web de base">
     <title>Zen ou l'art des jeux de mots</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header>
-        <h1>Zen ou l'art des jeux de mots</h1>
-        <nav>
-            <ul>
-                <li><a href="#bienvenue">Bienvenue</a></li>
-                <li><a href="#apropos">À propos</a></li>
-                <li><a href="#jeux">Jeux de mots</a></li>
-            </ul>
-        </nav>
-    </header>
-
     <main>
         <!-- VUE LOBBY -->
         <div id="lobby-view" class="view">
+            <header>
+                <h1>Zen ou l'art des jeux de mots</h1>
+                <p class="subtitle">Explorations ludiques du français</p>
+            </header>
+
             <section id="bienvenue">
                 <h2>Bienvenue</h2>
                 <!-- Vide pour l'instant -->
@@ -40,19 +33,25 @@
             <section id="jeux">
                 <h2>Jeux de mots</h2>
                 <div id="game-container">
-                    <h1 class="word-game">
-                        <span class="con">CON</span><span class="traction">TRACTION</span>
-                    </h1>
+                    <!-- Les mots seront chargés dynamiquement par le WordEngine -->
                 </div>
-                <button id="nextWordBtn" class="game-button" style="margin-top: 2rem;">Suivant</button>
-            </section>
+                <button id="startBtn" class="game-button" style="margin-top: 2rem;">Commencer...</button>
+                <button id="nextWordBtn" class="game-button" style="margin-top: 2rem; display: none;" disabled>Suivant...</button>
             </section>
         </div>
-    </main>
 
-    <footer>
-        <!-- Vide pour l'instant -->
-    </footer>
+        <!-- END GAME UI (Overlay) -->
+        <div id="endGameOverlay" class="overlay hidden">
+            <div class="end-game-panel">
+                <h2>Tous les mots vus !</h2>
+                <p>Vous avez vu les <span id="wordsCount">3</span> jeux de mots.</p>
+                <div class="end-game-buttons">
+                    <button id="restartBtn" class="game-button">Recommencer</button>
+                    <button id="exitGameBtn" class="game-button">Sortir</button>
+                </div>
+            </div>
+        </div>
+    </main>
 
     <script type="module" src="script.js"></script>
 </body>
